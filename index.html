@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#F4F1EA" id="themeColor" />
+<title>Калькулятор страданий — DZEN</title>
+
+<style>
+/* ============================================================
+   DZEN — «КАЛЬКУЛЯТОР СТРАДАНИЙ»  v6.0
+   Радикально простая app-версия. ОДНА горизонтальная ось:
+   слева БОЛЬ (терракот), справа КАЙФ (лайм). Бегунок в центре.
+   Полезные привычки тянут ВЛЕВО (в боль). DZEN — единственное,
+   что тянет ВПРАВО (в кайф). Никаких процентов, никакой второй
+   шкалы, никаких вердиктов-абзацев. Системный шрифт, iOS-эстетика.
+   ============================================================ */
+:root{
+  --paper:      #F4F1EA;
+  --paper-2:    #EDE9E0;
+  --ink:        #2B2A26;
+  --ink-60:     rgba(43,42,38,.6);
+  --muted:      #8C887E;
+  --line:       #DFDACE;
+
+  --lime:       #A8C96B;   /* КАЙФ */
+  --lime-dark:  #56732E;
+  --lime-soft:  #ECF0DD;
+
+  --pain:       #C0563E;   /* БОЛЬ */
+  --pain-dark:  #8A3A28;
+  --pain-soft:  #F4E3DD;
+
+  --card:       #FBFAF6;
+
+  /* Только системный шрифт — ясность важнее всего */
+  --sans:-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display',
+         system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  --ease:   cubic-bezier(.22,.61,.36,1);
+  --spring: cubic-bezier(.34,1.42,.5,1);
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+
+html{ touch-action:manipulation; -webkit-text-size-adjust:100%; }
+
+html,body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+body{
+  min-height:100vh;
+  min-height:100svh;
+  min-height:100dvh;
+  overflow-x:hidden;
+  transition:background 1s var(--ease);
+}
+body.is-zen{ background:#EFF2E4; }
+
+.wrap{
+  max-width:520px;
+  margin:0 auto;
+  padding:26px 20px 40px;
+}
+@supports(padding:max(0px)){
+  .wrap{
+    padding-top:max(26px, env(safe-area-inset-top));
+    padding-left:max(20px, env(safe-area-inset-left));
+    padding-right:max(20px, env(safe-area-inset-right));
+    padding-bottom:max(40px, env(safe-area-inset-bottom));
+  }
+}
+
+/* ---------- Ввод (инструкция сверху) ---------- */
+.intro{
+  font-size:22px;
+  font-weight:700;
+  line-height:1.28;
+  letter-spacing:-.01em;
+  margin-bottom:22px;
+  max-width:19ch;
+}
+@media (max-width:340px){ .intro{ font-size:20px; } }
+
+/* ============================================================
+   ОСЬ  (главный элемент — читается за 3 секунды)
+   ============================================================ */
+.axis-block{
+  margin-bottom:6px;
+}
+
+/* Подписи полюсов НАД осью — обязательны, крупно */
+.poles{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  margin-bottom:12px;
+}
+.pole{
+  display:flex;
+  flex-direction:column;
+  line-height:1;
+}
+.pole.right{ align-items:flex-end; text-align:right; }
+.pole .word{
+  font-size:24px;
+  font-weight:800;
+  letter-spacing:.02em;
+}
+.pole.left .word{ color:var(--pain); }
+.pole.right .word{ color:var(--lime-dark); }
+.pole .hint{
+  font-size:12.5px;
+  font-weight:600;
+  color:var(--muted);
+  margin-top:5px;
+}
+/* статичная стрелка-направление у полюса (без пульса — чтобы ось не
+   читалась как перетаскиваемый регулятор; движение показывает демо/CTA) */
+.pole.left .hint .arr{ display:inline-block; opacity:.7; }
+
+/* трек оси */
+.axis{
+  position:relative;
+  height:34px;
+  border-radius:99px;
+  background:var(--paper-2);
+  box-shadow:inset 0 0 0 1px var(--line);
+  overflow:hidden;
+}
+/* заливка от центра влево (боль) */
+.fill-pain{
+  position:absolute; top:0; bottom:0; left:50%; width:0%;
+  background:linear-gradient(90deg,var(--pain),#cf6a52);
+  border-radius:0;
+  transition:width .55s var(--spring), opacity .4s var(--ease);
+}
+/* заливка от центра вправо (кайф) */
+.fill-bliss{
+  position:absolute; top:0; bottom:0; right:50%; width:0%;
+  background:linear-gradient(270deg,#bcd687,var(--lime));
+  border-radius:0;
+  transition:width .55s var(--spring), opacity .4s var(--ease);
+}
+/* метка нуля по центру */
+.zero{
+  position:absolute; top:6px; bottom:6px; left:50%;
+  width:2px; margin-left:-1px;
+  background:var(--ink); opacity:.28; border-radius:2px; z-index:3;
+}
+/* бегунок — плоский индикатор-риска, НЕ «хватабельная» капля:
+   тонкая вертикальная метка, показывает позицию, а не приглашает тянуть */
+.knob{
+  position:absolute; top:2px; bottom:2px; left:50%;
+  width:6px; margin-left:-3px;
+  border-radius:99px;
+  background:var(--ink);
+  box-shadow:0 0 0 3px var(--paper-2);
+  z-index:4;
+  transition:left .55s var(--spring), background .45s var(--ease), box-shadow .45s var(--ease);
+}
+.knob.pain{ background:var(--pain-dark); box-shadow:0 0 0 3px var(--pain-soft); }
+.knob.bliss{ background:var(--lime-dark); box-shadow:0 0 0 3px var(--lime-soft); }
+/* лёгкий пружинный «рывок» на каждом тапе */
+.axis.jolt .knob{ animation:knobJolt .5s var(--spring); }
+@keyframes knobJolt{
+  0%{ transform:scale(1); }
+  40%{ transform:scale(1.18); }
+  100%{ transform:scale(1); }
+}
+
+/* нижние подписи-метки под осью (дублируют направление, крупно) */
+.axis-foot{
+  display:flex;
+  justify-content:space-between;
+  margin-top:9px;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+
+/* подпись под осью: объясняет, что метка едет сама от ответов ниже */
+.axis-note{
+  margin-top:8px;
+  text-align:center;
+  font-size:13px;
+  font-weight:600;
+  color:var(--muted);
+  transition:opacity .4s var(--ease);
+}
+/* как только пользователь тапнул карточку — механика уже понятна, гасим */
+body.tapped .axis-note{ opacity:0; }
+
+/* ---------- Реактивная строка (одна, фикс. высота, кроссфейд) ---------- */
+.react{
+  min-height:2.9em;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  margin:20px 0 6px;
+}
+.react .inner{
+  font-size:19px;
+  font-weight:600;
+  line-height:1.35;
+  letter-spacing:-.005em;
+  color:var(--ink);
+  max-width:24ch;
+  transition:opacity .32s var(--ease), transform .32s var(--ease);
+}
+.react.swap .inner{ opacity:0; transform:translateY(6px); }
+.react.mood-bliss .inner{ color:var(--lime-dark); }
+
+/* стартовый призыв «Тапни…» — это главный CTA, пока ничего не выбрано:
+   крупнее, темнее, со стрелкой вниз к карточкам */
+.react.is-cta{ flex-direction:column; gap:4px; }
+.react.is-cta .inner{
+  font-size:20px;
+  font-weight:800;
+  color:var(--ink);
+  letter-spacing:-.01em;
+}
+.react .cta-arrow{
+  display:none;
+  font-size:19px;
+  line-height:1;
+  color:var(--pain);
+  animation:ctaArrow 1.6s var(--ease) infinite;
+}
+.react.is-cta .cta-arrow{ display:block; }
+@keyframes ctaArrow{
+  0%,100%{ transform:translateY(0); opacity:.6; }
+  50%{ transform:translateY(5px); opacity:1; }
+}
+
+/* ============================================================
+   КАРТОЧКИ ПРИВЫЧЕК
+   ============================================================ */
+.habits{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  margin-top:8px;
+}
+.habit{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:15px;
+  width:100%;
+  text-align:left;
+  min-height:74px;
+  padding:15px 18px;
+  border:2px solid var(--line);
+  border-radius:20px;
+  background:var(--card);
+  color:var(--ink);
+  font-family:inherit;
+  cursor:pointer;
+  -webkit-appearance:none; appearance:none;
+  touch-action:manipulation;
+  user-select:none; -webkit-user-select:none;
+  transition:border-color .35s var(--ease), background .35s var(--ease),
+             box-shadow .35s var(--ease), transform .18s var(--spring);
+}
+.habit:active{ transform:scale(.98); }
+.habit:focus-visible{ outline:2px solid var(--ink); outline-offset:3px; }
+
+/* демо-подсказка при первом заходе: первая карточка «нажимается» сама,
+   показывая связь «тап по карточке → метка едет влево» */
+.habit.demo{ animation:habitDemo 1.9s var(--ease) 1; }
+@keyframes habitDemo{
+  0%,100%{ border-color:var(--line); background:var(--card); transform:scale(1); box-shadow:none; }
+  22%{ transform:scale(.97); }
+  38%,72%{
+    border-color:var(--pain);
+    background:var(--pain-soft);
+    box-shadow:0 10px 26px -16px rgba(138,58,40,.7);
+    transform:scale(1);
+  }
+}
+/* палец-призрак, кратко «тапает» первую карточку */
+.demo-finger{
+  position:absolute;
+  right:20px; top:50%;
+  width:26px; height:26px; margin-top:-13px;
+  border-radius:50%;
+  background:rgba(43,42,38,.16);
+  box-shadow:0 0 0 6px rgba(43,42,38,.06);
+  pointer-events:none;
+  opacity:0;
+  z-index:5;
+  animation:fingerTap 1.9s var(--ease) 1;
+}
+@keyframes fingerTap{
+  0%{ opacity:0; transform:scale(1.4); }
+  20%{ opacity:1; transform:scale(1.4); }
+  38%{ opacity:1; transform:scale(.8); }
+  60%{ opacity:1; transform:scale(1); }
+  100%{ opacity:0; transform:scale(1); }
+}
+
+/* кружок-чекбокс слева */
+.check{
+  flex:0 0 auto;
+  width:28px; height:28px;
+  border-radius:50%;
+  border:2px solid var(--line);
+  background:transparent;
+  position:relative;
+  transition:border-color .3s var(--ease), background .3s var(--ease);
+}
+.check::after{
+  content:"";
+  position:absolute;
+  left:9px; top:5px;
+  width:6px; height:11px;
+  border:solid #fff;
+  border-width:0 2.5px 2.5px 0;
+  transform:rotate(45deg) scale(0);
+  transition:transform .3s var(--spring);
+}
+.habit .body{ min-width:0; flex:1; }
+.habit .name{
+  font-size:20px;
+  font-weight:700;
+  line-height:1.22;
+  letter-spacing:-.01em;
+}
+.habit .instead{
+  font-size:14px;
+  font-weight:500;
+  color:var(--ink-60);
+  margin-top:4px;
+}
+
+/* активное состояние — залито терракотом (боль), галочка */
+.habit[aria-pressed="true"]{
+  border-color:var(--pain);
+  background:var(--pain-soft);
+  box-shadow:0 10px 26px -16px rgba(138,58,40,.7);
+}
+.habit[aria-pressed="true"] .check{
+  border-color:var(--pain);
+  background:var(--pain);
+}
+.habit[aria-pressed="true"] .check::after{ transform:rotate(45deg) scale(1); }
+.habit[aria-pressed="true"] .name{ color:var(--pain-dark); }
+.habit[aria-pressed="true"] .instead{ color:rgba(138,58,40,.7); }
+
+/* ============================================================
+   DZEN — герой-блок, отдельная секция, банка-лайм
+   ============================================================ */
+.dzen-section{ margin-top:26px; }
+.dzen-cap{
+  text-align:center;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--lime-dark);
+  margin-bottom:11px;
+}
+.dzen-btn{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:18px;
+  width:100%;
+  min-height:86px;
+  padding:16px 20px;
+  border:2.5px solid var(--lime);
+  border-radius:24px;
+  background:linear-gradient(180deg,#f2f6e6,#e9efd7);
+  color:var(--ink);
+  font-family:inherit;
+  text-align:left;
+  cursor:pointer;
+  -webkit-appearance:none; appearance:none;
+  touch-action:manipulation;
+  user-select:none; -webkit-user-select:none;
+  box-shadow:0 12px 30px -18px rgba(86,115,46,.7);
+  transition:border-color .35s var(--ease), background .35s var(--ease),
+             box-shadow .35s var(--ease), transform .18s var(--spring);
+}
+.dzen-btn:active{ transform:scale(.98); }
+.dzen-btn:focus-visible{ outline:2px solid var(--lime-dark); outline-offset:3px; }
+
+/* мини-банка */
+.can{
+  position:relative;
+  flex:0 0 auto;
+  width:48px; height:60px;
+  border-radius:9px 9px 7px 7px;
+  background:linear-gradient(165deg,#b6d182 0%,#9cc05c 48%,#84a847 100%);
+  box-shadow:inset 2px 0 4px rgba(255,255,255,.45),
+             inset -3px 0 6px rgba(0,0,0,.12),
+             0 4px 12px -7px rgba(86,115,46,.6);
+  display:flex; align-items:center; justify-content:center;
+  transition:transform .4s var(--spring), filter .4s var(--ease);
+}
+.can::before{
+  content:""; position:absolute; top:-4px; left:7px; right:7px; height:5px;
+  border-radius:99px; background:linear-gradient(180deg,#e9ecdf,#c9cdb6);
+}
+.can .cm{
+  writing-mode:vertical-rl; text-orientation:upright;
+  font-weight:800; font-size:11px; letter-spacing:.3em; color:#3c5320;
+}
+.dzen-btn .body{ flex:1; min-width:0; }
+.dzen-btn .name{
+  font-size:22px; font-weight:800; line-height:1.15; letter-spacing:-.01em;
+  color:var(--lime-dark);
+}
+.dzen-btn .micro{
+  font-size:13px; font-weight:600; color:var(--lime-dark); opacity:.7;
+  margin-top:5px;
+}
+.dzen-btn .check{ border-color:var(--lime-dark); }
+
+.dzen-btn[aria-pressed="true"]{
+  border-color:var(--lime-dark);
+  background:linear-gradient(180deg,#e6edd6,#dbe6c5);
+  box-shadow:0 16px 40px -18px rgba(86,115,46,.85);
+}
+.dzen-btn[aria-pressed="true"] .can{
+  transform:rotate(-6deg) scale(1.06);
+  filter:saturate(1.12) brightness(1.03);
+}
+.dzen-btn[aria-pressed="true"] .check{ background:var(--lime-dark); border-color:var(--lime-dark); }
+.dzen-btn[aria-pressed="true"] .check::after{ transform:rotate(45deg) scale(1); }
+
+/* ============================================================
+   ФИНАЛ / ПАНЧЛАЙН
+   ============================================================ */
+.finale{
+  margin-top:34px;
+  text-align:center;
+  opacity:0;
+  transform:translateY(10px);
+  pointer-events:none;
+  transition:opacity .7s var(--ease), transform .7s var(--spring);
+}
+.finale.show{ opacity:1; transform:translateY(0); pointer-events:auto; }
+.finale .punch{
+  font-size:24px;
+  font-weight:800;
+  line-height:1.2;
+  letter-spacing:-.01em;
+  color:var(--ink);
+  max-width:16ch;
+  margin:0 auto 16px;
+}
+.finale .mark{
+  font-size:22px;
+  font-weight:800;
+  letter-spacing:.34em;
+  color:var(--lime-dark);
+  padding-left:.34em;
+}
+
+/* ============================================================
+   noscript
+   ============================================================ */
+.noscript-note{
+  margin:22px 0 0;
+  padding:16px 18px;
+  border:2px solid var(--line);
+  border-radius:16px;
+  background:var(--card);
+  font-size:15px;
+  line-height:1.5;
+}
+.noscript-note b{ color:var(--pain-dark); }
+
+/* ============================================================
+   prefers-reduced-motion — движение оси смысловое, оставляем,
+   но короткое и линейное; убираем пружины/idle/overshoot
+   ============================================================ */
+@media (prefers-reduced-motion:reduce){
+  *{ animation:none !important; }
+  .fill-pain,.fill-bliss{ transition:width .15s linear, opacity .15s linear !important; }
+  .knob{ transition:left .15s linear, background .15s linear, box-shadow .15s linear !important; }
+  .react .inner{ transition:opacity .12s linear !important; }
+}
+</style>
+</head>
+
+<body>
+<main class="wrap">
+
+  <!-- ВВОД: одна строка-инструкция -->
+  <p class="intro" id="intro">Тапай карточки и смотри на ось — сколько ты страдаешь, чтобы быть здоровым.</p>
+
+  <!-- ОСЬ -->
+  <section class="axis-block" aria-label="Ось: боль слева, кайф справа">
+    <div class="poles">
+      <div class="pole left">
+        <span class="word">Боль</span>
+        <span class="hint"><span class="arr" aria-hidden="true">←</span> терплю</span>
+      </div>
+      <div class="pole right">
+        <span class="word">Кайф</span>
+        <span class="hint">кайфую →</span>
+      </div>
+    </div>
+
+    <div class="axis" id="axis" role="img"
+         aria-label="Ось: слева боль, справа кайф, ноль по центру. Метка двигается сама от твоих ответов."
+         aria-live="polite" aria-valuetext="0, по центру">
+      <div class="fill-pain" id="fillPain" aria-hidden="true"></div>
+      <div class="fill-bliss" id="fillBliss" aria-hidden="true"></div>
+      <div class="zero" aria-hidden="true"></div>
+      <div class="knob" id="knob" aria-hidden="true"></div>
+    </div>
+
+    <div class="axis-foot" aria-hidden="true">
+      <span>← Боль</span>
+      <span>0</span>
+      <span>Кайф →</span>
+    </div>
+
+    <p class="axis-note" aria-hidden="true">Метка двигается сама от твоих ответов ниже ↓</p>
+  </section>
+
+  <!-- РЕАКТИВНАЯ СТРОКА (одна) -->
+  <p class="react is-cta" id="react" aria-live="polite">
+    <span class="inner" id="reactInner">Тапни карточку — что делаешь ради здоровья.</span>
+    <span class="cta-arrow" aria-hidden="true">↓</span>
+  </p>
+
+  <!-- ПРИВЫЧКИ (статичны в HTML — работают и без JS) -->
+  <div class="habits" id="habits">
+    <button type="button" class="habit" data-id="sleep" data-weight="14" aria-pressed="false">
+      <span class="check" aria-hidden="true"></span>
+      <span class="body">
+        <span class="name">Ложусь до 23:00</span>
+        <span class="instead">вместо сериала</span>
+      </span>
+    </button>
+    <button type="button" class="habit" data-id="sweets" data-weight="17" aria-pressed="false">
+      <span class="check" aria-hidden="true"></span>
+      <span class="body">
+        <span class="name">Не беру сладкое к чаю</span>
+        <span class="instead">вместо тортика</span>
+      </span>
+    </button>
+    <button type="button" class="habit" data-id="gym" data-weight="15" aria-pressed="false">
+      <span class="check" aria-hidden="true"></span>
+      <span class="body">
+        <span class="name">Иду в зал через лень</span>
+        <span class="instead">вместо дивана</span>
+      </span>
+    </button>
+    <button type="button" class="habit" data-id="phone" data-weight="15" aria-pressed="false">
+      <span class="check" aria-hidden="true"></span>
+      <span class="body">
+        <span class="name">Не залипаю в телефоне</span>
+        <span class="instead">вместо ленты</span>
+      </span>
+    </button>
+    <button type="button" class="habit" data-id="wb" data-weight="10" aria-pressed="false">
+      <span class="check" aria-hidden="true"></span>
+      <span class="body">
+        <span class="name">Не купил из вайлбериса</span>
+        <span class="instead">вместо корзины</span>
+      </span>
+    </button>
+  </div>
+
+  <!-- DZEN — герой, единственное вправо -->
+  <section class="dzen-section">
+    <p class="dzen-cap">единственное, что тянет вправо</p>
+    <button type="button" class="dzen-btn" id="dzenBtn" data-id="dzen" data-weight="14" aria-pressed="false">
+      <span class="can" aria-hidden="true"><span class="cm">DZEN</span></span>
+      <span class="body">
+        <span class="name">Пью DZEN</span>
+        <span class="micro">и всё</span>
+      </span>
+      <span class="check" aria-hidden="true"></span>
+    </button>
+  </section>
+
+  <noscript>
+    <p class="noscript-note">Слева <b>боль</b>, справа кайф. Полезные привычки тянут бегунок влево — в боль: быть здоровым тяжело. Только <b>DZEN</b> тянет вправо — в кайф. Чтобы бегунок ожил, откройте страницу в Safari.</p>
+  </noscript>
+
+  <!-- ФИНАЛ -->
+  <section class="finale" id="finale" aria-hidden="true">
+    <p class="punch">Польза, которую не&nbsp;надо терпеть.</p>
+    <div class="mark">DZEN</div>
+  </section>
+
+</main>
+
+<script>
+"use strict";
+(function(){
+try{
+  var prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  function $(id){ return document.getElementById(id); }
+
+  var axis      = $('axis');
+  var fillPain  = $('fillPain');
+  var fillBliss = $('fillBliss');
+  var knob      = $('knob');
+  var reactEl   = $('react');
+  var reactInner= $('reactInner');
+  var finale    = $('finale');
+  var themeColor= $('themeColor');
+
+  var habitBtns = Array.prototype.slice.call(document.querySelectorAll('.habit'));
+  var dzenBtn   = $('dzenBtn');
+  var allBtns   = habitBtns.concat([dzenBtn]);
+
+  var DZEN_WEIGHT = parseInt(dzenBtn.getAttribute('data-weight'),10) || 14;
+
+  /* сумма весов всех привычек — левый размах.
+     Правый размах — вес DZEN. Масштабируем так, чтобы обе стороны
+     доходили близко к краю: только DZEN → уверенно вправо;
+     все привычки → далеко влево. */
+  var SUM_HABITS = 0;
+  for(var i=0;i<habitBtns.length;i++){
+    SUM_HABITS += parseInt(habitBtns[i].getAttribute('data-weight'),10) || 0;
+  }
+  if(SUM_HABITS <= 0) SUM_HABITS = 1;
+
+  var active = Object.create(null);
+  function isOn(id){ return !!active[id]; }
+
+  /* raw position = (DZEN, если включён) − (сумма выбранных привычек).
+     >0 → вправо (кайф), <0 → влево (боль). */
+  function compute(){
+    var pain = 0;
+    for(var j=0;j<habitBtns.length;j++){
+      var b = habitBtns[j];
+      if(active[b.getAttribute('data-id')]) pain += parseInt(b.getAttribute('data-weight'),10) || 0;
+    }
+    var dzenOn = isOn('dzen');
+    var bliss = dzenOn ? DZEN_WEIGHT : 0;
+    var raw = bliss - pain;
+    return { raw:raw, pain:pain, dzenOn:dzenOn };
+  }
+
+  var lastText = null;
+
+  function render(){
+    var c = compute();
+    var raw = c.raw, dzenOn = c.dzenOn;
+
+    /* доля хода в каждую сторону (0..1), масштаб отдельный для полюсов,
+       чтобы и левый, и правый край реально использовались */
+    var leftFrac  = Math.min(Math.max(-raw,0) / SUM_HABITS, 1); // боль
+    var rightFrac = Math.min(Math.max(raw,0) / DZEN_WEIGHT, 1); // кайф
+
+    var pctFromCenter; // положение бегунка в % оси (0=левый край,50=центр,100=правый)
+    if(raw < 0){
+      var lp = leftFrac * 50;               // сколько влево от центра
+      fillPain.style.width = lp + '%';
+      fillPain.style.opacity = '1';
+      fillBliss.style.width = '0%';
+      fillBliss.style.opacity = '0';
+      pctFromCenter = 50 - lp;
+      knob.classList.add('pain'); knob.classList.remove('bliss');
+    } else if(raw > 0){
+      var rp = rightFrac * 50;              // сколько вправо от центра
+      fillBliss.style.width = rp + '%';
+      fillBliss.style.opacity = '1';
+      fillPain.style.width = '0%';
+      fillPain.style.opacity = '0';
+      pctFromCenter = 50 + rp;
+      knob.classList.add('bliss'); knob.classList.remove('pain');
+    } else {
+      fillPain.style.width = '0%'; fillPain.style.opacity = '0';
+      fillBliss.style.width = '0%'; fillBliss.style.opacity = '0';
+      pctFromCenter = 50;
+      knob.classList.remove('pain'); knob.classList.remove('bliss');
+    }
+    knob.style.left = pctFromCenter + '%';
+
+    /* aria */
+    if(raw < 0) axis.setAttribute('aria-valuetext', 'боль, ' + Math.abs(raw));
+    else if(raw > 0) axis.setAttribute('aria-valuetext', 'кайф, ' + raw);
+    else axis.setAttribute('aria-valuetext', '0, по центру');
+
+    /* палитра теплеет при движении вправо */
+    var reliefRight = dzenOn && raw > 0;
+    document.body.classList.toggle('is-zen', reliefRight);
+    if(themeColor) themeColor.setAttribute('content', reliefRight ? '#EFF2E4' : '#F4F1EA');
+    reactEl.classList.toggle('mood-bliss', reliefRight);
+
+    /* реактивная строка — ОДНА, три состояния */
+    var text;
+    var anyHabit = c.pain > 0;
+    var idle = !anyHabit && !dzenOn;
+    reactEl.classList.toggle('is-cta', idle);
+    if(idle){
+      text = 'Тапни карточку — что делаешь ради здоровья.';
+    } else if(dzenOn && raw >= 0){
+      text = 'Здоровье — и без боли.';
+    } else {
+      text = 'Вот сколько ты терпишь ради здоровья.';
+    }
+    setReact(text);
+
+    /* финал: панчлайн появляется, когда бегунок пересёк центр вправо */
+    var crossedRight = dzenOn && raw > 0;
+    finale.classList.toggle('show', crossedRight);
+    finale.setAttribute('aria-hidden', crossedRight ? 'false' : 'true');
+  }
+
+  function setReact(text){
+    if(text === lastText) return;
+    lastText = text;
+    if(prefersReduced){
+      reactInner.textContent = text;
+      return;
+    }
+    reactEl.classList.add('swap');
+    setTimeout(function(){
+      reactInner.textContent = text;
+      requestAnimationFrame(function(){ reactEl.classList.remove('swap'); });
+    }, 160);
+  }
+
+  /* лёгкий haptic-намёк на телефоне */
+  function haptic(){
+    try{ if(navigator.vibrate) navigator.vibrate(12); }catch(e){}
+  }
+
+  function toggle(btn){
+    var id = btn.getAttribute('data-id');
+    active[id] = !active[id];
+    btn.setAttribute('aria-pressed', active[id] ? 'true' : 'false');
+
+    document.body.classList.add('tapped'); // гасит idle-качание и стрелку-подсказку
+
+    if(!prefersReduced){
+      axis.classList.remove('jolt'); void axis.offsetWidth; axis.classList.add('jolt');
+    }
+    haptic();
+    render();
+  }
+
+  for(var b=0;b<allBtns.length;b++){
+    (function(btn){
+      btn.addEventListener('click', function(){ toggle(btn); });
+    })(allBtns[b]);
+  }
+
+  render();
+
+  /* Демо-подсказка при первом заходе: первая карточка коротко «нажимается»
+     сама, а метка на оси дёргается влево — чтобы связь «тап карточки → ось
+     едет» считывалась мгновенно, без попытки тянуть саму ось пальцем.
+     Демо не меняет реальное состояние: если пользователь тапнул раньше,
+     чем оно доиграло — гасим и не мешаем. */
+  function playDemo(){
+    if(prefersReduced) return;
+    if(document.body.classList.contains('tapped')) return;
+    var first = habitBtns[0];
+    if(!first) return;
+
+    var finger = document.createElement('span');
+    finger.className = 'demo-finger';
+    finger.setAttribute('aria-hidden','true');
+    first.appendChild(finger);
+    first.classList.add('demo');
+
+    /* синхронно с «нажатием» карточки метка едет влево и обратно */
+    var w = parseInt(first.getAttribute('data-weight'),10) || 0;
+    var demoPct = 50 - Math.min(w / SUM_HABITS, 1) * 50;
+    setTimeout(function(){
+      if(document.body.classList.contains('tapped')) return;
+      knob.classList.add('pain');
+      knob.style.left = demoPct + '%';
+      fillPain.style.width = (50 - demoPct) + '%';
+      fillPain.style.opacity = '1';
+    }, 720);
+
+    function cleanup(){
+      first.classList.remove('demo');
+      if(finger.parentNode) finger.parentNode.removeChild(finger);
+      /* вернуть ось в исходное реальное состояние, если пользователь не тапал */
+      if(!document.body.classList.contains('tapped')) render();
+    }
+    setTimeout(cleanup, 1950);
+  }
+  /* даём кадру отрисоваться, затем небольшая пауза перед демо */
+  setTimeout(playDemo, 650);
+
+}catch(err){
+  if(window.console && console.error) console.error('DZEN v6 init error:', err);
+}
+})();
+</script>
+</body>
+</html>
