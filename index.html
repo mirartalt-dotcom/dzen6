@@ -8,12 +8,14 @@
 
 <style>
 /* ============================================================
-   DZEN — «КАЛЬКУЛЯТОР СТРАДАНИЙ»  v6.0
-   Радикально простая app-версия. ОДНА горизонтальная ось:
-   слева БОЛЬ (терракот), справа КАЙФ (лайм). Бегунок в центре.
-   Полезные привычки тянут ВЛЕВО (в боль). DZEN — единственное,
-   что тянет ВПРАВО (в кайф). Никаких процентов, никакой второй
-   шкалы, никаких вердиктов-абзацев. Системный шрифт, iOS-эстетика.
+   DZEN — «КАЛЬКУЛЯТОР СТРАДАНИЙ»  v6.1
+   ДВЕ строки-индикатора одна под другой, всё остальное как в v6.
+   СВЕРХУ строка ЗДОРОВЬЕ — лайм-бар, растёт слева-направо,
+   наполняется от ЛЮБОЙ галочки И от DZEN («сколько пользы»).
+   СНИЗУ строка ЦЕНА — ось БОЛЬ↔КАЙФ, но теперь это не разница,
+   а доминирующая валюта: привычки → платишь болью (влево),
+   DZEN → платишь кайфом (вправо, ВСЕГДА). Здоровье и цена
+   СКЛАДЫВАЮТСЯ, а не воюют. Системный шрифт, iOS-эстетика.
    ============================================================ */
 :root{
   --paper:      #F4F1EA;
@@ -23,7 +25,7 @@
   --muted:      #8C887E;
   --line:       #DFDACE;
 
-  --lime:       #A8C96B;   /* КАЙФ */
+  --lime:       #A8C96B;   /* ЗДОРОВЬЕ / КАЙФ */
   --lime-dark:  #56732E;
   --lime-soft:  #ECF0DD;
 
@@ -83,18 +85,79 @@ body.is-zen{ background:#EFF2E4; }
   line-height:1.28;
   letter-spacing:-.01em;
   margin-bottom:22px;
-  max-width:19ch;
+  max-width:20ch;
 }
 @media (max-width:340px){ .intro{ font-size:20px; } }
 
 /* ============================================================
-   ОСЬ  (главный элемент — читается за 3 секунды)
+   БЛОК ИНДИКАТОРОВ — ДВЕ СТРОКИ
+   ============================================================ */
+.meters{
+  margin-bottom:4px;
+}
+
+/* общий заголовок строки слева + микроподпись */
+.meter-head{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  margin-bottom:9px;
+}
+.meter-title{
+  font-size:13px;
+  font-weight:800;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+.meter-sub{
+  font-size:12px;
+  font-weight:600;
+  color:var(--muted);
+}
+
+/* ---------- СТРОКА 1: ЗДОРОВЬЕ ---------- */
+.health-block{ margin-bottom:24px; }
+.health-row{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.health-track{
+  position:relative;
+  flex:1;
+  height:22px;
+  border-radius:99px;
+  background:var(--paper-2);
+  box-shadow:inset 0 0 0 1px var(--line);
+  overflow:hidden;
+}
+.health-fill{
+  position:absolute; top:0; bottom:0; left:0; width:0%;
+  background:linear-gradient(90deg,var(--lime),#bcd687);
+  border-radius:99px;
+  transition:width .55s var(--spring);
+}
+.health-num{
+  flex:0 0 auto;
+  min-width:2.6em;
+  text-align:right;
+  font-size:19px;
+  font-weight:800;
+  letter-spacing:-.01em;
+  color:var(--muted);
+  transition:color .4s var(--ease);
+}
+.health-num.on{ color:var(--lime-dark); }
+
+/* ============================================================
+   СТРОКА 2: ЦЕНА — ОСЬ  (как в v6)
    ============================================================ */
 .axis-block{
   margin-bottom:6px;
 }
 
-/* Подписи полюсов НАД осью — обязательны, крупно */
+/* Подписи полюсов НАД осью — с живыми числами у полюсов */
 .poles{
   display:flex;
   align-items:flex-end;
@@ -105,6 +168,7 @@ body.is-zen{ background:#EFF2E4; }
   display:flex;
   flex-direction:column;
   line-height:1;
+  transition:opacity .4s var(--ease);
 }
 .pole.right{ align-items:flex-end; text-align:right; }
 .pole .word{
@@ -114,15 +178,16 @@ body.is-zen{ background:#EFF2E4; }
 }
 .pole.left .word{ color:var(--pain); }
 .pole.right .word{ color:var(--lime-dark); }
-.pole .hint{
-  font-size:12.5px;
-  font-weight:600;
-  color:var(--muted);
-  margin-top:5px;
+.pole .num{
+  font-size:14px;
+  font-weight:700;
+  margin-top:6px;
+  min-height:1em;
 }
-/* статичная стрелка-направление у полюса (без пульса — чтобы ось не
-   читалась как перетаскиваемый регулятор; движение показывает демо/CTA) */
-.pole.left .hint .arr{ display:inline-block; opacity:.7; }
+.pole.left .num{ color:var(--pain-dark); }
+.pole.right .num{ color:var(--lime-dark); }
+/* левый полюс бледнеет, когда включён DZEN (валюта сменилась на кайф) */
+.axis-block.dzen .pole.left{ opacity:.32; }
 
 /* трек оси */
 .axis{
@@ -153,8 +218,7 @@ body.is-zen{ background:#EFF2E4; }
   width:2px; margin-left:-1px;
   background:var(--ink); opacity:.28; border-radius:2px; z-index:3;
 }
-/* бегунок — плоский индикатор-риска, НЕ «хватабельная» капля:
-   тонкая вертикальная метка, показывает позицию, а не приглашает тянуть */
+/* бегунок — плоский индикатор-риска, НЕ «хватабельная» капля */
 .knob{
   position:absolute; top:2px; bottom:2px; left:50%;
   width:6px; margin-left:-3px;
@@ -186,7 +250,7 @@ body.is-zen{ background:#EFF2E4; }
   color:var(--muted);
 }
 
-/* подпись под осью: объясняет, что метка едет сама от ответов ниже */
+/* подпись под осью: объясняет, что метка едет сама от ответов */
 .axis-note{
   margin-top:8px;
   text-align:center;
@@ -195,12 +259,11 @@ body.is-zen{ background:#EFF2E4; }
   color:var(--muted);
   transition:opacity .4s var(--ease);
 }
-/* как только пользователь тапнул карточку — механика уже понятна, гасим */
 body.tapped .axis-note{ opacity:0; }
 
 /* ---------- Реактивная строка (одна, фикс. высота, кроссфейд) ---------- */
 .react{
-  min-height:2.9em;
+  min-height:3.4em;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -213,17 +276,16 @@ body.tapped .axis-note{ opacity:0; }
   line-height:1.35;
   letter-spacing:-.005em;
   color:var(--ink);
-  max-width:24ch;
+  max-width:26ch;
   transition:opacity .32s var(--ease), transform .32s var(--ease);
 }
 .react.swap .inner{ opacity:0; transform:translateY(6px); }
 .react.mood-bliss .inner{ color:var(--lime-dark); }
 
-/* стартовый призыв «Тапни…» — это главный CTA, пока ничего не выбрано:
-   крупнее, темнее, со стрелкой вниз к карточкам */
+/* стартовый призыв — главный CTA, пока ничего не выбрано */
 .react.is-cta{ flex-direction:column; gap:4px; }
 .react.is-cta .inner{
-  font-size:20px;
+  font-size:19px;
   font-weight:800;
   color:var(--ink);
   letter-spacing:-.01em;
@@ -274,8 +336,7 @@ body.tapped .axis-note{ opacity:0; }
 .habit:active{ transform:scale(.98); }
 .habit:focus-visible{ outline:2px solid var(--ink); outline-offset:3px; }
 
-/* демо-подсказка при первом заходе: первая карточка «нажимается» сама,
-   показывая связь «тап по карточке → метка едет влево» */
+/* демо-подсказка */
 .habit.demo{ animation:habitDemo 1.9s var(--ease) 1; }
 @keyframes habitDemo{
   0%,100%{ border-color:var(--line); background:var(--card); transform:scale(1); box-shadow:none; }
@@ -287,7 +348,6 @@ body.tapped .axis-note{ opacity:0; }
     transform:scale(1);
   }
 }
-/* палец-призрак, кратко «тапает» первую карточку */
 .demo-finger{
   position:absolute;
   right:20px; top:50%;
@@ -340,6 +400,41 @@ body.tapped .axis-note{ opacity:0; }
   font-weight:500;
   color:var(--ink-60);
   margin-top:4px;
+}
+
+/* ---------- Мини-теги эффекта на карточке ---------- */
+.tags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:9px;
+}
+.tag{
+  display:inline-flex;
+  align-items:center;
+  font-size:12.5px;
+  font-weight:800;
+  letter-spacing:-.005em;
+  line-height:1;
+  padding:5px 9px;
+  border-radius:99px;
+  white-space:nowrap;
+}
+.tag-health{
+  color:var(--lime-dark);
+  background:var(--lime-soft);
+  box-shadow:inset 0 0 0 1px rgba(86,115,46,.22);
+}
+.tag-pain{
+  color:var(--pain-dark);
+  background:var(--pain-soft);
+  box-shadow:inset 0 0 0 1px rgba(138,58,40,.22);
+}
+/* у DZEN второй тег — яркий лайм-филл (кайф), а не терракот */
+.tag-kaif{
+  color:#3c5320;
+  background:var(--lime);
+  box-shadow:inset 0 0 0 1px rgba(86,115,46,.4);
 }
 
 /* активное состояние — залито терракотом (боль), галочка */
@@ -424,6 +519,7 @@ body.tapped .axis-note{ opacity:0; }
   font-size:13px; font-weight:600; color:var(--lime-dark); opacity:.7;
   margin-top:5px;
 }
+.dzen-btn .tags{ margin-top:8px; }
 .dzen-btn .check{ border-color:var(--lime-dark); }
 
 .dzen-btn[aria-pressed="true"]{
@@ -480,14 +576,14 @@ body.tapped .axis-note{ opacity:0; }
   line-height:1.5;
 }
 .noscript-note b{ color:var(--pain-dark); }
+.noscript-note .g{ color:var(--lime-dark); }
 
 /* ============================================================
-   prefers-reduced-motion — движение оси смысловое, оставляем,
-   но короткое и линейное; убираем пружины/idle/overshoot
+   prefers-reduced-motion
    ============================================================ */
 @media (prefers-reduced-motion:reduce){
   *{ animation:none !important; }
-  .fill-pain,.fill-bliss{ transition:width .15s linear, opacity .15s linear !important; }
+  .fill-pain,.fill-bliss,.health-fill{ transition:width .15s linear, opacity .15s linear !important; }
   .knob{ transition:left .15s linear, background .15s linear, box-shadow .15s linear !important; }
   .react .inner{ transition:opacity .12s linear !important; }
 }
@@ -498,99 +594,147 @@ body.tapped .axis-note{ opacity:0; }
 <main class="wrap">
 
   <!-- ВВОД: одна строка-инструкция -->
-  <p class="intro" id="intro">Тапай карточки и смотри на ось — сколько ты страдаешь, чтобы быть здоровым.</p>
+  <p class="intro" id="intro">Две привычки — два способа получить здоровье. Разница в том, чем ты&nbsp;платишь.</p>
 
-  <!-- ОСЬ -->
-  <section class="axis-block" aria-label="Ось: боль слева, кайф справа">
-    <div class="poles">
-      <div class="pole left">
-        <span class="word">Боль</span>
-        <span class="hint"><span class="arr" aria-hidden="true">←</span> терплю</span>
+  <!-- ИНДИКАТОРЫ: две строки -->
+  <section class="meters" aria-label="Два индикатора: здоровье и цена">
+
+    <!-- СТРОКА 1: ЗДОРОВЬЕ -->
+    <div class="health-block">
+      <div class="meter-head">
+        <span class="meter-title">Здоровье</span>
+        <span class="meter-sub">сколько пользы получаешь</span>
       </div>
-      <div class="pole right">
-        <span class="word">Кайф</span>
-        <span class="hint">кайфую →</span>
+      <div class="health-row">
+        <div class="health-track" role="img" id="healthTrack"
+             aria-label="Здоровье 0 из 87" aria-live="polite">
+          <div class="health-fill" id="healthFill" aria-hidden="true"></div>
+        </div>
+        <span class="health-num" id="healthNum" aria-hidden="true">+0</span>
       </div>
     </div>
 
-    <div class="axis" id="axis" role="img"
-         aria-label="Ось: слева боль, справа кайф, ноль по центру. Метка двигается сама от твоих ответов."
-         aria-live="polite" aria-valuetext="0, по центру">
-      <div class="fill-pain" id="fillPain" aria-hidden="true"></div>
-      <div class="fill-bliss" id="fillBliss" aria-hidden="true"></div>
-      <div class="zero" aria-hidden="true"></div>
-      <div class="knob" id="knob" aria-hidden="true"></div>
-    </div>
+    <!-- СТРОКА 2: ЦЕНА (ось v6) -->
+    <div class="axis-block" id="axisBlock">
+      <div class="meter-head">
+        <span class="meter-title">Цена</span>
+        <span class="meter-sub">чем ты за это платишь</span>
+      </div>
 
-    <div class="axis-foot" aria-hidden="true">
-      <span>← Боль</span>
-      <span>0</span>
-      <span>Кайф →</span>
-    </div>
+      <div class="poles">
+        <div class="pole left" id="poleLeft">
+          <span class="word">Боль</span>
+          <span class="num" id="painNum" aria-hidden="true"></span>
+        </div>
+        <div class="pole right" id="poleRight">
+          <span class="word">Кайф</span>
+          <span class="num" id="kaifNum" aria-hidden="true"></span>
+        </div>
+      </div>
 
-    <p class="axis-note" aria-hidden="true">Метка двигается сама от твоих ответов ниже ↓</p>
+      <div class="axis" id="axis" role="img"
+           aria-label="Ось цены: слева боль, справа кайф, ноль по центру. Метка двигается сама от твоих ответов."
+           aria-live="polite" aria-valuetext="0, по центру">
+        <div class="fill-pain" id="fillPain" aria-hidden="true"></div>
+        <div class="fill-bliss" id="fillBliss" aria-hidden="true"></div>
+        <div class="zero" aria-hidden="true"></div>
+        <div class="knob" id="knob" aria-hidden="true"></div>
+      </div>
+
+      <div class="axis-foot" aria-hidden="true">
+        <span>← Боль</span>
+        <span>0</span>
+        <span>Кайф →</span>
+      </div>
+
+      <p class="axis-note" aria-hidden="true">Метка едет сама от твоих ответов ниже ↓</p>
+    </div>
   </section>
 
   <!-- РЕАКТИВНАЯ СТРОКА (одна) -->
   <p class="react is-cta" id="react" aria-live="polite">
-    <span class="inner" id="reactInner">Тапни карточку — что делаешь ради здоровья.</span>
+    <span class="inner" id="reactInner">Отметь, что делаешь. Смотри: здоровье растёт — а вот чем ты за него платишь.</span>
     <span class="cta-arrow" aria-hidden="true">↓</span>
   </p>
 
   <!-- ПРИВЫЧКИ (статичны в HTML — работают и без JS) -->
   <div class="habits" id="habits">
-    <button type="button" class="habit" data-id="sleep" data-weight="14" aria-pressed="false">
+    <button type="button" class="habit" data-id="sleep" data-health="18" data-pain="14" aria-pressed="false">
       <span class="check" aria-hidden="true"></span>
       <span class="body">
         <span class="name">Ложусь до 23:00</span>
         <span class="instead">вместо сериала</span>
+        <span class="tags" aria-hidden="true">
+          <span class="tag tag-health">+18 здоровью</span>
+          <span class="tag tag-pain">+14 боли</span>
+        </span>
       </span>
     </button>
-    <button type="button" class="habit" data-id="sweets" data-weight="17" aria-pressed="false">
+    <button type="button" class="habit" data-id="sweets" data-health="12" data-pain="17" aria-pressed="false">
       <span class="check" aria-hidden="true"></span>
       <span class="body">
         <span class="name">Не беру сладкое к чаю</span>
         <span class="instead">вместо тортика</span>
+        <span class="tags" aria-hidden="true">
+          <span class="tag tag-health">+12 здоровью</span>
+          <span class="tag tag-pain">+17 боли</span>
+        </span>
       </span>
     </button>
-    <button type="button" class="habit" data-id="gym" data-weight="15" aria-pressed="false">
+    <button type="button" class="habit" data-id="gym" data-health="23" data-pain="15" aria-pressed="false">
       <span class="check" aria-hidden="true"></span>
       <span class="body">
         <span class="name">Иду в зал через лень</span>
         <span class="instead">вместо дивана</span>
+        <span class="tags" aria-hidden="true">
+          <span class="tag tag-health">+23 здоровью</span>
+          <span class="tag tag-pain">+15 боли</span>
+        </span>
       </span>
     </button>
-    <button type="button" class="habit" data-id="phone" data-weight="15" aria-pressed="false">
+    <button type="button" class="habit" data-id="phone" data-health="10" data-pain="12" aria-pressed="false">
       <span class="check" aria-hidden="true"></span>
       <span class="body">
         <span class="name">Не залипаю в телефоне</span>
         <span class="instead">вместо ленты</span>
+        <span class="tags" aria-hidden="true">
+          <span class="tag tag-health">+10 здоровью</span>
+          <span class="tag tag-pain">+12 боли</span>
+        </span>
       </span>
     </button>
-    <button type="button" class="habit" data-id="wb" data-weight="10" aria-pressed="false">
+    <button type="button" class="habit" data-id="wb" data-health="8" data-pain="10" aria-pressed="false">
       <span class="check" aria-hidden="true"></span>
       <span class="body">
         <span class="name">Не купил из вайлбериса</span>
         <span class="instead">вместо корзины</span>
+        <span class="tags" aria-hidden="true">
+          <span class="tag tag-health">+8 здоровью</span>
+          <span class="tag tag-pain">+10 боли</span>
+        </span>
       </span>
     </button>
   </div>
 
   <!-- DZEN — герой, единственное вправо -->
   <section class="dzen-section">
-    <p class="dzen-cap">единственное, что тянет вправо</p>
-    <button type="button" class="dzen-btn" id="dzenBtn" data-id="dzen" data-weight="14" aria-pressed="false">
+    <p class="dzen-cap">единственная польза без боли</p>
+    <button type="button" class="dzen-btn" id="dzenBtn" data-id="dzen" data-health="16" data-kaif="14" aria-pressed="false">
       <span class="can" aria-hidden="true"><span class="cm">DZEN</span></span>
       <span class="body">
-        <span class="name">Пью DZEN</span>
-        <span class="micro">и всё</span>
+        <span class="name">Выпил DZEN</span>
+        <span class="micro">единственная польза без боли</span>
+        <span class="tags" aria-hidden="true">
+          <span class="tag tag-health">+16 здоровью</span>
+          <span class="tag tag-kaif">+14 кайфа</span>
+        </span>
       </span>
       <span class="check" aria-hidden="true"></span>
     </button>
   </section>
 
   <noscript>
-    <p class="noscript-note">Слева <b>боль</b>, справа кайф. Полезные привычки тянут бегунок влево — в боль: быть здоровым тяжело. Только <b>DZEN</b> тянет вправо — в кайф. Чтобы бегунок ожил, откройте страницу в Safari.</p>
+    <p class="noscript-note">Сверху — <span class="g">здоровье</span>: оно растёт от любой привычки и от DZEN. Снизу — <b>цена</b>: за полезные привычки ты платишь <b>болью</b> (силой воли), и только <span class="g">DZEN</span> ты платишь <span class="g">кайфом</span>. Чтобы индикаторы ожили, откройте страницу в Safari.</p>
   </noscript>
 
   <!-- ФИНАЛ -->
@@ -609,9 +753,17 @@ try{
   function $(id){ return document.getElementById(id); }
 
   var axis      = $('axis');
+  var axisBlock = $('axisBlock');
   var fillPain  = $('fillPain');
   var fillBliss = $('fillBliss');
   var knob      = $('knob');
+  var poleLeft  = $('poleLeft');
+  var poleRight = $('poleRight');
+  var painNum   = $('painNum');
+  var kaifNum   = $('kaifNum');
+  var healthTrack = $('healthTrack');
+  var healthFill  = $('healthFill');
+  var healthNum   = $('healthNum');
   var reactEl   = $('react');
   var reactInner= $('reactInner');
   var finale    = $('finale');
@@ -621,63 +773,84 @@ try{
   var dzenBtn   = $('dzenBtn');
   var allBtns   = habitBtns.concat([dzenBtn]);
 
-  var DZEN_WEIGHT = parseInt(dzenBtn.getAttribute('data-weight'),10) || 14;
+  function attrInt(el, name){ return parseInt(el.getAttribute(name),10) || 0; }
 
-  /* сумма весов всех привычек — левый размах.
-     Правый размах — вес DZEN. Масштабируем так, чтобы обе стороны
-     доходили близко к краю: только DZEN → уверенно вправо;
-     все привычки → далеко влево. */
-  var SUM_HABITS = 0;
-  for(var i=0;i<habitBtns.length;i++){
-    SUM_HABITS += parseInt(habitBtns[i].getAttribute('data-weight'),10) || 0;
-  }
-  if(SUM_HABITS <= 0) SUM_HABITS = 1;
+  var DZEN_HEALTH = attrInt(dzenBtn, 'data-health');
+  var DZEN_KAIF   = attrInt(dzenBtn, 'data-kaif');
+
+  /* Максимум верхнего бара: сумма health всех привычек + health DZEN. */
+  var HEALTH_MAX = DZEN_HEALTH;
+  for(var i=0;i<habitBtns.length;i++){ HEALTH_MAX += attrInt(habitBtns[i], 'data-health'); }
+  if(HEALTH_MAX <= 0) HEALTH_MAX = 1;
+
+  /* Сумма боли всех привычек — знаменатель левого хода оси.
+     Общий максимум хода = max(сумма боли, кайф DZEN) — чтобы левый
+     ход не был вялым (÷71), а правый резким (÷14): оба нормируем к
+     одному масштабу, но так, чтобы каждая сторона всё же доходила
+     близко к краю в своём предельном случае. */
+  var SUM_PAIN = 0;
+  for(var p=0;p<habitBtns.length;p++){ SUM_PAIN += attrInt(habitBtns[p], 'data-pain'); }
+  if(SUM_PAIN <= 0) SUM_PAIN = 1;
 
   var active = Object.create(null);
   function isOn(id){ return !!active[id]; }
 
-  /* raw position = (DZEN, если включён) − (сумма выбранных привычек).
-     >0 → вправо (кайф), <0 → влево (боль). */
+  /* ТРИ раздельных накопителя — НИКАКОГО вычитания.
+     health = сумма health всех выбранных (вкл. DZEN)
+     pain   = сумма pain выбранных привычек
+     kaif   = kaif DZEN если включён */
   function compute(){
-    var pain = 0;
+    var health = 0, pain = 0;
     for(var j=0;j<habitBtns.length;j++){
       var b = habitBtns[j];
-      if(active[b.getAttribute('data-id')]) pain += parseInt(b.getAttribute('data-weight'),10) || 0;
+      if(active[b.getAttribute('data-id')]){
+        health += attrInt(b, 'data-health');
+        pain   += attrInt(b, 'data-pain');
+      }
     }
     var dzenOn = isOn('dzen');
-    var bliss = dzenOn ? DZEN_WEIGHT : 0;
-    var raw = bliss - pain;
-    return { raw:raw, pain:pain, dzenOn:dzenOn };
+    if(dzenOn) health += DZEN_HEALTH;
+    var kaif = dzenOn ? DZEN_KAIF : 0;
+    return { health:health, pain:pain, kaif:kaif, dzenOn:dzenOn };
   }
 
   var lastText = null;
 
   function render(){
     var c = compute();
-    var raw = c.raw, dzenOn = c.dzenOn;
+    var health = c.health, pain = c.pain, kaif = c.kaif, dzenOn = c.dzenOn;
 
-    /* доля хода в каждую сторону (0..1), масштаб отдельный для полюсов,
-       чтобы и левый, и правый край реально использовались */
-    var leftFrac  = Math.min(Math.max(-raw,0) / SUM_HABITS, 1); // боль
-    var rightFrac = Math.min(Math.max(raw,0) / DZEN_WEIGHT, 1); // кайф
+    /* ---------- СТРОКА 1: ЗДОРОВЬЕ (растёт слева-направо) ---------- */
+    var hPct = Math.min(health / HEALTH_MAX, 1) * 100;
+    healthFill.style.width = hPct + '%';
+    healthNum.textContent = '+' + health;
+    healthNum.classList.toggle('on', health > 0);
+    healthTrack.setAttribute('aria-label', 'Здоровье ' + health + ' из ' + HEALTH_MAX);
 
-    var pctFromCenter; // положение бегунка в % оси (0=левый край,50=центр,100=правый)
-    if(raw < 0){
-      var lp = leftFrac * 50;               // сколько влево от центра
-      fillPain.style.width = lp + '%';
-      fillPain.style.opacity = '1';
-      fillBliss.style.width = '0%';
-      fillBliss.style.opacity = '0';
-      pctFromCenter = 50 - lp;
-      knob.classList.add('pain'); knob.classList.remove('bliss');
-    } else if(raw > 0){
-      var rp = rightFrac * 50;              // сколько вправо от центра
+    /* ---------- СТРОКА 2: ЦЕНА — доминирующая валюта ----------
+       Правило: если DZEN включён → метка ВСЕГДА вправо в кайф
+       (DZEN меняет валюту оплаты). Иначе если есть боль → влево.
+       Иначе центр. Никакого вычитания pain и kaif. */
+    var pctFromCenter; // 0=левый край, 50=центр, 100=правый
+    if(dzenOn){
+      /* кайф-доля к общему максимуму хода, чтобы правый ход был заметным */
+      var kaifFrac = Math.min(kaif / DZEN_KAIF, 1); // DZEN → полный ход вправо
+      var rp = kaifFrac * 50;
       fillBliss.style.width = rp + '%';
       fillBliss.style.opacity = '1';
       fillPain.style.width = '0%';
       fillPain.style.opacity = '0';
       pctFromCenter = 50 + rp;
       knob.classList.add('bliss'); knob.classList.remove('pain');
+    } else if(pain > 0){
+      var painFrac = Math.min(pain / SUM_PAIN, 1);
+      var lp = painFrac * 50;
+      fillPain.style.width = lp + '%';
+      fillPain.style.opacity = '1';
+      fillBliss.style.width = '0%';
+      fillBliss.style.opacity = '0';
+      pctFromCenter = 50 - lp;
+      knob.classList.add('pain'); knob.classList.remove('bliss');
     } else {
       fillPain.style.width = '0%'; fillPain.style.opacity = '0';
       fillBliss.style.width = '0%'; fillBliss.style.opacity = '0';
@@ -686,35 +859,39 @@ try{
     }
     knob.style.left = pctFromCenter + '%';
 
-    /* aria */
-    if(raw < 0) axis.setAttribute('aria-valuetext', 'боль, ' + Math.abs(raw));
-    else if(raw > 0) axis.setAttribute('aria-valuetext', 'кайф, ' + raw);
+    /* числа у полюсов оси */
+    painNum.textContent = (pain > 0 && !dzenOn) ? ('Боль ' + pain) : (pain > 0 ? ('Боль ' + pain) : '');
+    kaifNum.textContent = dzenOn ? ('Кайф ' + kaif) : '';
+    /* левый полюс бледнеет при включённом DZEN (валюта сменилась на кайф) */
+    axisBlock.classList.toggle('dzen', dzenOn);
+
+    /* aria оси */
+    if(dzenOn) axis.setAttribute('aria-valuetext', 'кайф ' + kaif);
+    else if(pain > 0) axis.setAttribute('aria-valuetext', 'боль ' + pain);
     else axis.setAttribute('aria-valuetext', '0, по центру');
 
-    /* палитра теплеет при движении вправо */
-    var reliefRight = dzenOn && raw > 0;
-    document.body.classList.toggle('is-zen', reliefRight);
-    if(themeColor) themeColor.setAttribute('content', reliefRight ? '#EFF2E4' : '#F4F1EA');
-    reactEl.classList.toggle('mood-bliss', reliefRight);
+    /* палитра теплеет, когда включён DZEN */
+    document.body.classList.toggle('is-zen', dzenOn);
+    if(themeColor) themeColor.setAttribute('content', dzenOn ? '#EFF2E4' : '#F4F1EA');
+    reactEl.classList.toggle('mood-bliss', dzenOn);
 
     /* реактивная строка — ОДНА, три состояния */
-    var text;
-    var anyHabit = c.pain > 0;
+    var anyHabit = pain > 0;
     var idle = !anyHabit && !dzenOn;
+    var text;
     reactEl.classList.toggle('is-cta', idle);
     if(idle){
-      text = 'Тапни карточку — что делаешь ради здоровья.';
-    } else if(dzenOn && raw >= 0){
-      text = 'Здоровье — и без боли.';
+      text = 'Отметь, что делаешь. Смотри: здоровье растёт — а вот чем ты за него платишь.';
+    } else if(dzenOn){
+      text = 'Здоровья столько же — а платишь не болью, а кайфом. Вот в чём DZEN.';
     } else {
-      text = 'Вот сколько ты терпишь ради здоровья.';
+      text = 'Здоровье набрал — но платишь болью и силой воли. Каждый раз через «не хочу».';
     }
     setReact(text);
 
-    /* финал: панчлайн появляется, когда бегунок пересёк центр вправо */
-    var crossedRight = dzenOn && raw > 0;
-    finale.classList.toggle('show', crossedRight);
-    finale.setAttribute('aria-hidden', crossedRight ? 'false' : 'true');
+    /* финал: DZEN всегда в кайфе → показываем по dzenOn */
+    finale.classList.toggle('show', dzenOn);
+    finale.setAttribute('aria-hidden', dzenOn ? 'false' : 'true');
   }
 
   function setReact(text){
@@ -731,7 +908,6 @@ try{
     }, 160);
   }
 
-  /* лёгкий haptic-намёк на телефоне */
   function haptic(){
     try{ if(navigator.vibrate) navigator.vibrate(12); }catch(e){}
   }
@@ -741,7 +917,7 @@ try{
     active[id] = !active[id];
     btn.setAttribute('aria-pressed', active[id] ? 'true' : 'false');
 
-    document.body.classList.add('tapped'); // гасит idle-качание и стрелку-подсказку
+    document.body.classList.add('tapped');
 
     if(!prefersReduced){
       axis.classList.remove('jolt'); void axis.offsetWidth; axis.classList.add('jolt');
@@ -759,10 +935,8 @@ try{
   render();
 
   /* Демо-подсказка при первом заходе: первая карточка коротко «нажимается»
-     сама, а метка на оси дёргается влево — чтобы связь «тап карточки → ось
-     едет» считывалась мгновенно, без попытки тянуть саму ось пальцем.
-     Демо не меняет реальное состояние: если пользователь тапнул раньше,
-     чем оно доиграло — гасим и не мешаем. */
+     сама, ВЕРХНИЙ бар едет вправо (здоровье растёт), а НИЖНЯЯ метка едет
+     влево в боль — обучаем связке «здоровье растёт / цена = боль». */
   function playDemo(){
     if(prefersReduced) return;
     if(document.body.classList.contains('tapped')) return;
@@ -775,30 +949,36 @@ try{
     first.appendChild(finger);
     first.classList.add('demo');
 
-    /* синхронно с «нажатием» карточки метка едет влево и обратно */
-    var w = parseInt(first.getAttribute('data-weight'),10) || 0;
-    var demoPct = 50 - Math.min(w / SUM_HABITS, 1) * 50;
+    var h = attrInt(first, 'data-health');
+    var pn = attrInt(first, 'data-pain');
+    var demoHealthPct = Math.min(h / HEALTH_MAX, 1) * 100;
+    var demoPct = 50 - Math.min(pn / SUM_PAIN, 1) * 50;
+
     setTimeout(function(){
       if(document.body.classList.contains('tapped')) return;
+      /* верхний бар: здоровье растёт */
+      healthFill.style.width = demoHealthPct + '%';
+      healthNum.textContent = '+' + h;
+      healthNum.classList.add('on');
+      /* нижняя ось: цена = боль, метка влево */
       knob.classList.add('pain');
       knob.style.left = demoPct + '%';
       fillPain.style.width = (50 - demoPct) + '%';
       fillPain.style.opacity = '1';
+      painNum.textContent = 'Боль ' + pn;
     }, 720);
 
     function cleanup(){
       first.classList.remove('demo');
       if(finger.parentNode) finger.parentNode.removeChild(finger);
-      /* вернуть ось в исходное реальное состояние, если пользователь не тапал */
       if(!document.body.classList.contains('tapped')) render();
     }
     setTimeout(cleanup, 1950);
   }
-  /* даём кадру отрисоваться, затем небольшая пауза перед демо */
   setTimeout(playDemo, 650);
 
 }catch(err){
-  if(window.console && console.error) console.error('DZEN v6 init error:', err);
+  if(window.console && console.error) console.error('DZEN v6.1 init error:', err);
 }
 })();
 </script>
