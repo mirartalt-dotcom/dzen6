@@ -217,17 +217,17 @@ body.is-zen{ background:#EFF2E4; }
   box-shadow:inset 0 0 0 1px var(--line);
   overflow:hidden;
 }
-/* заливка от центра влево (страдание) */
+/* заливка от центра ВЛЕВО (страдание): якорь у центра, растёт влево */
 .fill-pain{
-  position:absolute; top:0; bottom:0; left:50%; width:0%;
-  background:linear-gradient(90deg,var(--pain),#cf6a52);
+  position:absolute; top:0; bottom:0; right:50%; width:0%;
+  background:linear-gradient(270deg,var(--pain),#cf6a52);
   border-radius:0;
   transition:width .55s var(--spring), opacity .4s var(--ease);
 }
-/* заливка от центра вправо (удовольствие) */
+/* заливка от центра ВПРАВО (удовольствие): якорь у центра, растёт вправо */
 .fill-bliss{
-  position:absolute; top:0; bottom:0; right:50%; width:0%;
-  background:linear-gradient(270deg,#bcd687,var(--lime));
+  position:absolute; top:0; bottom:0; left:50%; width:0%;
+  background:linear-gradient(90deg,var(--lime),#bcd687);
   border-radius:0;
   transition:width .55s var(--spring), opacity .4s var(--ease);
 }
@@ -607,7 +607,7 @@ body.tapped .axis-note{ opacity:0; }
       </div>
       <div class="health-row">
         <div class="health-track" role="img" id="healthTrack"
-             aria-label="Здоровье 0 из 87" aria-live="polite">
+             aria-label="Здоровье 0 из 87">
           <div class="health-fill" id="healthFill" aria-hidden="true"></div>
         </div>
         <span class="health-num" id="healthNum" aria-hidden="true">+0</span>
@@ -633,8 +633,7 @@ body.tapped .axis-note{ opacity:0; }
       </div>
 
       <div class="axis" id="axis" role="img"
-           aria-label="Ось цены: слева страдание, справа удовольствие, ноль по центру. Метка двигается сама от твоих ответов."
-           aria-live="polite" aria-valuetext="0, по центру">
+           aria-label="Цена: ноль, метка по центру">
         <div class="fill-pain" id="fillPain" aria-hidden="true"></div>
         <div class="fill-bliss" id="fillBliss" aria-hidden="true"></div>
         <div class="zero" aria-hidden="true"></div>
@@ -665,7 +664,7 @@ body.tapped .axis-note{ opacity:0; }
         <span class="instead">вместо второго сезона, который сам себя не досмотрит</span>
         <span class="tags" aria-hidden="true">
           <span class="tag tag-health">+18 здоровью</span>
-          <span class="tag tag-pain">+14 страдания</span>
+          <span class="tag tag-pain">−14 страдания</span>
         </span>
       </span>
     </button>
@@ -676,7 +675,7 @@ body.tapped .axis-note{ opacity:0; }
         <span class="instead">вместо печенья, которое так грустно на тебя смотрит</span>
         <span class="tags" aria-hidden="true">
           <span class="tag tag-health">+12 здоровью</span>
-          <span class="tag tag-pain">+17 страдания</span>
+          <span class="tag tag-pain">−17 страдания</span>
         </span>
       </span>
     </button>
@@ -687,7 +686,7 @@ body.tapped .axis-note{ opacity:0; }
         <span class="instead">вместо дивана, который считал тебя своим</span>
         <span class="tags" aria-hidden="true">
           <span class="tag tag-health">+23 здоровью</span>
-          <span class="tag tag-pain">+15 страдания</span>
+          <span class="tag tag-pain">−15 страдания</span>
         </span>
       </span>
     </button>
@@ -698,7 +697,7 @@ body.tapped .axis-note{ opacity:0; }
         <span class="instead">вместо часа скролла ни о чём, но так уютно</span>
         <span class="tags" aria-hidden="true">
           <span class="tag tag-health">+10 здоровью</span>
-          <span class="tag tag-pain">+12 страдания</span>
+          <span class="tag tag-pain">−12 страдания</span>
         </span>
       </span>
     </button>
@@ -709,7 +708,7 @@ body.tapped .axis-note{ opacity:0; }
         <span class="instead">вместо корзины, которую ты копил как будто для друга</span>
         <span class="tags" aria-hidden="true">
           <span class="tag tag-health">+8 здоровью</span>
-          <span class="tag tag-pain">+10 страдания</span>
+          <span class="tag tag-pain">−10 страдания</span>
         </span>
       </span>
     </button>
@@ -816,7 +815,10 @@ try{
      ============================================================ */
   var REACT = {
     "0": [
-      "Пока ты просто живёшь. Ни пользы, ни боли."
+      "Пока ты просто живёшь. Ни пользы, ни боли.",
+      "Всё снял. Организм в недоумении, диван ликует.",
+      "Ноль привычек. Зато честно.",
+      "Откатился к заводским настройкам."
     ],
     "1": [
       "Одна полезная привычка. Тело благодарит, характер уже слегка портится.",
@@ -826,7 +828,7 @@ try{
     ],
     "2": [
       "Две привычки. Здоровье растёт, а сила воли берёт первый отпуск.",
-      "Уже двое. Организм доволен, внутренний лентяй пишет заявление.",
+      "Уже две. Организм доволен, внутренний лентяй пишет заявление.",
       "Двойной удар по себе же. Здоровье в плюсе, настроение на паузе.",
       "Две привычки. Ты молодец — и слегка страдалец."
     ],
@@ -848,12 +850,23 @@ try{
       "Все привычки собраны. Медаль есть, сил радоваться — нет.",
       "Максимум пользы. Максимум терпения. Минимум веселья."
     ],
-    "dzen": [
-      "Выдох. Наконец польза, за которую не пришлось страдать.",
-      "А вот и удовольствие. Здоровье есть, а терпеть — не пришлось.",
-      "DZEN. Польза без гримасы на лице — так, оказывается, можно.",
-      "Наконец-то полезное, которое не наказывает. Стрелка ушла вправо сама.",
-      "Здоровья столько же — а платишь не страданием, а удовольствием."
+    "dzenWin": [
+      "Метка ушла вправо. Полезное — и не наказывает.",
+      "Польза есть, а платишь удовольствием. Выдохнул.",
+      "DZEN перетянул. Здоровье есть, терпеть — нет.",
+      "Тот же плюс к здоровью — только платишь удовольствием."
+    ],
+    "dzenEven": [
+      "DZEN окупил страдание в ноль. Ты в расчёте.",
+      "Ровно по нулям. Одно терпение — один глоток.",
+      "Метка по центру: страдание оплачено удовольствием.",
+      "Баланс. За привычку заплатил, DZEN вернул."
+    ],
+    "dzenLose": [
+      "Пока перевес влево. Вправо тянет только DZEN.",
+      "Метка слева, но DZEN уже подтягивает вправо.",
+      "Перебор привычек. DZEN отыгрывает, но не всё.",
+      "Дорого далось. DZEN гасит часть, остальное — на тебе."
     ]
   };
 
@@ -882,47 +895,51 @@ try{
     healthNum.classList.toggle('on', health > 0);
     healthTrack.setAttribute('aria-label', 'Здоровье ' + health + ' из ' + HEALTH_MAX);
 
-    /* ---------- СТРОКА 2: ЦЕНА — доминирующая валюта ----------
-       Правило: если DZEN включён → метка ВСЕГДА вправо в удовольствие
-       (DZEN меняет валюту оплаты). Иначе если есть страдание → влево.
-       Иначе центр. Никакого вычитания. */
-    var pctFromCenter; // 0=левый край, 50=центр, 100=правый
-    if(dzenOn){
-      var kaifFrac = Math.min(kaif / DZEN_KAIF, 1); // DZEN → полный ход вправо
-      var rp = kaifFrac * 50;
-      fillBliss.style.width = rp + '%';
-      fillBliss.style.opacity = '1';
-      fillPain.style.width = '0%';
-      fillPain.style.opacity = '0';
+    /* ---------- СТРОКА 2: ЦЕНА — ПЕРЕТЯГИВАНИЕ КАНАТА ----------
+       net = удовольствие − страдание.
+       Каждый отдельный тап тянет метку строго в ОДНУ сторону:
+       привычка вкл → влево (её цена), выкл → вправо;
+       DZEN вкл → вправо, выкл → влево. Позиция метки — ИТОГ каната.
+       Шкала асимметрична: левый ход нормирован на сумму страданий (68),
+       правый — на удовольствие DZEN (14), чтобы ОДИН DZEN уводил вправо
+       до упора. Заливка одна — от центра до метки. */
+    var net = kaif - pain;              // kaif = удовольствие DZEN (0/14)
+    var pctFromCenter;                  // 0=левый край, 50=центр, 100=правый
+    if(net > 0){
+      var rp = Math.min(net / DZEN_KAIF, 1) * 50;
+      fillBliss.style.width = rp + '%'; fillBliss.style.opacity = '1';
+      fillPain.style.width = '0%';      fillPain.style.opacity = '0';
       pctFromCenter = 50 + rp;
       knob.classList.add('bliss'); knob.classList.remove('pain');
-    } else if(pain > 0){
-      var painFrac = Math.min(pain / SUM_PAIN, 1);
-      var lp = painFrac * 50;
-      fillPain.style.width = lp + '%';
-      fillPain.style.opacity = '1';
-      fillBliss.style.width = '0%';
-      fillBliss.style.opacity = '0';
+    } else if(net < 0){
+      var lp = Math.min(-net / SUM_PAIN, 1) * 50;
+      fillPain.style.width = lp + '%';  fillPain.style.opacity = '1';
+      fillBliss.style.width = '0%';     fillBliss.style.opacity = '0';
       pctFromCenter = 50 - lp;
       knob.classList.add('pain'); knob.classList.remove('bliss');
     } else {
-      fillPain.style.width = '0%'; fillPain.style.opacity = '0';
+      fillPain.style.width = '0%';  fillPain.style.opacity = '0';
       fillBliss.style.width = '0%'; fillBliss.style.opacity = '0';
       pctFromCenter = 50;
       knob.classList.remove('pain'); knob.classList.remove('bliss');
     }
+    if(pctFromCenter < 0) pctFromCenter = 0;
+    if(pctFromCenter > 100) pctFromCenter = 100;
     knob.style.left = pctFromCenter + '%';
 
-    /* числа у полюсов оси */
-    painNum.textContent = (pain > 0) ? ('Страдание ' + pain) : '';
-    kaifNum.textContent = dzenOn ? ('Удовольствие ' + kaif) : '';
-    /* левый полюс бледнеет при включённом DZEN (валюта сменилась на удовольствие) */
-    axisBlock.classList.toggle('dzen', dzenOn);
+    /* числа у полюсов оси: страдание со знаком «−», удовольствие с «+».
+       Показываем ОБА, если одновременно есть привычки и DZEN — видно канат. */
+    painNum.textContent = (pain > 0) ? ('−' + pain) : '';
+    kaifNum.textContent = dzenOn ? ('+' + kaif) : '';
+    axisBlock.classList.remove('dzen');   // оба полюса всегда читаемы
 
-    /* aria оси */
-    if(dzenOn) axis.setAttribute('aria-valuetext', 'удовольствие ' + kaif);
-    else if(pain > 0) axis.setAttribute('aria-valuetext', 'страдание ' + pain);
-    else axis.setAttribute('aria-valuetext', '0, по центру');
+    /* aria оси (role=img → обновляем сам aria-label, а не aria-valuetext) */
+    var axisLabel;
+    if(net > 0)      axisLabel = 'Цена: перевес в удовольствие +' + kaif + ', метка справа';
+    else if(net < 0) axisLabel = 'Цена: страдание −' + pain + ', метка слева';
+    else if(dzenOn)  axisLabel = 'Цена: удовольствие и страдание в ноль, метка по центру';
+    else             axisLabel = 'Цена: ноль, метка по центру';
+    axis.setAttribute('aria-label', axisLabel);
 
     /* палитра теплеет, когда включён DZEN */
     document.body.classList.toggle('is-zen', dzenOn);
@@ -930,9 +947,14 @@ try{
     reactEl.classList.toggle('mood-bliss', dzenOn);
 
     /* реактивная строка — новая на каждый тап.
-       Если DZEN включён → всегда ключ "dzen".
+       DZEN включён → ключ по итогу каната (net): перевес вправо / ноль / влево.
        Иначе ключ = кол-во выбранных привычек 0..5. */
-    var key = dzenOn ? 'dzen' : String(Math.min(count, 5));
+    var key;
+    if(dzenOn){
+      key = (net > 0) ? 'dzenWin' : (net < 0 ? 'dzenLose' : 'dzenEven');
+    } else {
+      key = String(Math.min(count, 5));
+    }
     setReact(pickReact(key));
 
     /* финал: DZEN всегда в удовольствии → показываем по dzenOn */
@@ -1014,7 +1036,7 @@ try{
       knob.style.left = demoPct + '%';
       fillPain.style.width = (50 - demoPct) + '%';
       fillPain.style.opacity = '1';
-      painNum.textContent = 'Страдание ' + pn;
+      painNum.textContent = '−' + pn;
     }, 720);
 
     function cleanup(){
